@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { getMap, THEMES } from './maps.js';
+import { getMap } from './maps.js';
+import { buildArena } from './arena-renderer.js';
+import { sharesVisibility } from './geometry.js';
 const V = THREE.Vector3;
 export class World {
   constructor(canvas) {
@@ -110,225 +112,9 @@ export class World {
       });
     }
     this.map = getMap(id);
-    const m = this.map,
-      t = THEMES[m.theme];
     this.level = new THREE.Group();
     this.scene.add(this.level);
-    const g = this.level;
-    this.scene.background = new THREE.Color(t.sky);
-    this.scene.fog = new THREE.Fog(t.fog, 45, 115);
-    this.box(g, 0, -0.3, 0, m.size * 2, 0.6, m.size * 2, t.ground, false);
-    // Thin seams and wear markings make scale and motion legible.
-    for (let a = -m.size; a < m.size; a += 4) {
-      this.box(g, a, 0.008, 0, 0.025, 0.01, m.size * 2, t.dark, false);
-      this.box(g, 0, 0.009, a, m.size * 2, 0.01, 0.025, t.dark, false);
-    }
-    const wallHeight = ['metro', 'lab'].includes(m.theme) ? 7 : 2.5;
-    for (const sign of [-1, 1]) {
-      this.box(
-        g,
-        sign * (m.size + 0.35),
-        wallHeight / 2,
-        0,
-        0.7,
-        wallHeight,
-        m.size * 2 + 1,
-        t.wall,
-      );
-      this.box(g, 0, wallHeight / 2, sign * (m.size + 0.35), m.size * 2, wallHeight, 0.7, t.wall);
-      this.box(g, sign * (m.size + 0.35), wallHeight + 0.08, 0, 0.8, 0.16, m.size * 2 + 1, t.dark);
-      this.box(g, 0, wallHeight + 0.08, sign * (m.size + 0.35), m.size * 2, 0.16, 0.8, t.dark);
-    }
-    m.blocks.forEach((b, i) => {
-      let color = ['wreck', 'train', 'bus', 'car'].includes(b.kind)
-        ? t.accent
-        : ['rock', 'shed', 'core'].includes(b.kind)
-          ? t.dark
-          : t.wall;
-      const base = this.box(g, b.x, b.y + b.h / 2, b.z, b.w, b.h, b.d, color);
-      this.box(g, b.x, b.y + b.h + 0.025, b.z, b.w + 0.08, 0.05, b.d + 0.08, t.dark);
-      if (['wreck', 'train', 'bus'].includes(b.kind)) {
-        for (let z = b.z - b.d / 2 + 1.8; z < b.z + b.d / 2 - 1; z += 2.3)
-          for (const s of [-1, 1]) {
-            this.box(
-              g,
-              b.x + s * (b.w / 2 + 0.015),
-              b.y + b.h * 0.66,
-              z,
-              0.035,
-              0.7,
-              1.3,
-              0x344e50,
-            );
-            this.box(g, b.x + s * (b.w / 2 + 0.02), 0.35, z, 0.06, 0.12, 1.9, t.dark);
-          }
-        if (b.kind === 'wreck') {
-          const tail = this.box(g, b.x, 5, b.z + b.d / 2 - 2, 0.4, 4, 3, t.accent);
-          tail.rotation.x = -0.18;
-          this.label(g, 'EDC  /  01', b.x, 1.5, b.z - b.d / 2 - 0.02, 3, 0.75, Math.PI);
-        } else {
-          for (const z of [-1, 1])
-            this.box(g, b.x, 2, b.z + z * (b.d / 2 + 0.02), b.w * 0.8, 1, 0.03, 0x344e50);
-        }
-      }
-      if (['crate', 'vent', 'kiosk'].includes(b.kind)) {
-        for (let y = 0.3; y < b.h; y += 0.4)
-          this.box(g, b.x, b.y + y, b.z + b.d / 2 + 0.015, b.w * 0.8, 0.07, 0.025, t.dark);
-      }
-      if (b.kind === 'car') {
-        this.box(g, b.x, 1.5, b.z, b.w * 0.5, 0.6, b.d * 0.9, 0x344e50);
-        for (const s of [-1, 1])
-          for (const z of [-1, 1]) {
-            const wheel = this.cylinder(
-              g,
-              b.x + s * b.w * 0.32,
-              0.4,
-              b.z + z * b.d * 0.48,
-              0.4,
-              0.4,
-              0.25,
-              t.dark,
-            );
-            wheel.rotation.x = Math.PI / 2;
-          }
-      }
-      if (['fountain', 'well'].includes(b.kind)) {
-        this.cylinder(g, b.x, b.h + 0.05, b.z, 1.6, 1.6, 0.12, 0x84c6ba, 24);
-        this.cylinder(g, b.x, b.h + 0.8, b.z, 0.25, 0.4, 1.6, t.wall);
-      }
-      if (['stall', 'hut', 'kiosk'].includes(b.kind)) {
-        const roof = this.cylinder(
-          g,
-          b.x,
-          b.h + 0.7,
-          b.z,
-          0,
-          Math.max(b.w, b.d) * 0.77,
-          1.4,
-          i % 2 ? t.dark : t.accent,
-          4,
-        );
-        roof.rotation.y = Math.PI / 4;
-        this.box(g, b.x, b.h * 0.35, b.z + b.d / 2 + 0.02, 1.2, b.h * 0.7, 0.04, t.dark);
-      }
-      if (b.kind === 'rock') {
-        this.box(g, b.x, b.h * 0.6, b.z, b.w * 0.94, b.h * 0.6, b.d * 0.94, t.dark);
-      }
-      if (['panel', 'core'].includes(b.kind)) {
-        for (let y = 1; y < b.h; y += 1.2)
-          this.box(g, b.x, y, b.z + b.d / 2 + 0.025, b.w * 0.96, 0.025, 0.015, t.dark);
-        this.box(g, b.x, b.h - 0.2, b.z + b.d / 2 + 0.04, b.w * 0.65, 0.07, 0.035, t.accent);
-      }
-    });
-    // Arena-specific dressing, kept outside collision paths or flat on the ground.
-    for (let i = 0; i < 2; i++) {
-      const s = m.spawn[i];
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(1.1, 1.2, 40),
-        new THREE.MeshBasicMaterial({ color: i ? 0xf49277 : t.accent, side: THREE.DoubleSide }),
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(s[0], 0.025, s[2]);
-      g.add(ring);
-    }
-    if (m.decor === 'plane') {
-      for (const s of [-1, 1]) {
-        this.label(g, 'CAUTION  //  LIVE RANGE', s * 16, 1.5, -m.size + 0.02, 8, 1);
-        for (let i = 0; i < 7; i++) {
-          const rock = this.cylinder(
-            g,
-            s * (m.size + 7 + i * 2),
-            i % 3,
-            Math.sin(i * 2) * 25,
-            3,
-            5,
-            5 + (i % 4),
-            t.wall,
-            5,
-          );
-          rock.rotation.z = 0.15 * i;
-        }
-      }
-    }
-    if (['town', 'street', 'roof', 'school', 'qud'].includes(m.decor)) {
-      for (let i = 0; i < 15; i++) {
-        const angle = (i / 15) * Math.PI * 2,
-          r = m.size + 10 + (i % 3) * 4,
-          x = Math.sin(angle) * r,
-          z = Math.cos(angle) * r,
-          h = m.decor === 'roof' ? 8 + (i % 5) * 4 : 5 + (i % 4) * 2;
-        this.box(g, x, h / 2 - 2, z, 6, h, 7, i % 2 ? t.dark : t.wall);
-        for (let y = 1; y < h - 2; y += 2.5) {
-          for (const offset of [-1.5, 1.5])
-            this.box(g, x + offset, y - 2, z + 3.51, 0.8, 1, 0.03, t.accent, false);
-        }
-      }
-    }
-    if (m.decor === 'metro') {
-      for (const s of [-1, 1]) {
-        this.box(g, s * 4, 0.02, 0, 0.12, 0.04, m.size * 2, 0xddbd5f);
-        this.box(g, s * 18, 6, 0, 0.2, 0.1, 40, 0xe8efd4);
-        this.label(g, 'LAST TRAIN  /  PLATFORM ' + (s + 2), s * 14, 4, -m.size + 0.03, 11, 1.4);
-      }
-      this.box(g, 0, 7.3, 0, m.size * 2, 0.5, m.size * 2, t.dark);
-    }
-    if (m.decor === 'street') {
-      for (let a = -20; a < 22; a += 5) {
-        this.box(g, a, 0.025, 0, 2, 0.02, 0.13, t.accent);
-        this.box(g, 0, 0.026, a, 0.13, 0.02, 2, t.accent);
-      }
-    }
-    if (m.decor === 'school') {
-      this.label(g, 'AFTER HOURS ATHLETICS', 0, 2, -m.size + 0.02, 14, 1.4);
-      for (const s of [-1, 1]) {
-        this.cylinder(g, s * 15, 4.5, -18, 0.08, 0.08, 9, t.dark);
-        this.box(g, s * 15, 8.5, -18, 3, 0.15, 0.6, t.accent);
-      }
-    }
-    if (m.decor === 'qud') {
-      for (const s of [-1, 1])
-        for (let i = 0; i < 6; i++) {
-          const x = s * 19,
-            z = -10 + i * 4;
-          this.cylinder(g, x, 1, z, 0.17, 0.3, 2, t.dark, 5);
-          const crown = this.cylinder(g, x, 2.2, z, 0, 1.2, 2, t.accent, 5);
-          crown.rotation.z = s * 0.2;
-        }
-      this.label(g, 'SALT • WATER • LEAD', 0, 2.1, -m.size + 0.02, 11, 1.3);
-    }
-    if (m.decor === 'roof') {
-      this.label(g, 'NO ACCESS', 0, 2, 4.52, 4, 1);
-      this.cylinder(g, -17, 7, -17, 2, 2, 3, t.dark, 16);
-      for (const x of [-18, -16]) this.box(g, x, 3.2, -17, 0.15, 6.4, 0.15, t.dark);
-    }
-    if (m.decor === 'lab') {
-      this.label(g, '07  /  CONTROL GROUP', 0, 4, -m.size + 0.02, 15, 2, 0, '#d2d8c7', '#3a5156');
-      for (const s of [-1, 1]) this.box(g, s * 20, 4, 0, 0.08, 0.16, 35, t.accent);
-    }
-    if (m.decor === 'river') {
-      this.box(g, 0, 0.025, 8, 40, 0.03, 4, 0x82ada2);
-      for (let i = 0; i < 8; i++) {
-        const x = Math.sin(i * 2) * 31,
-          z = Math.cos(i * 2) * 31;
-        this.cylinder(g, x, 3, z, 0.4, 0.6, 6, t.dark);
-        this.cylinder(g, x, 7, z, 0, 3.5, 7, t.dark, 6);
-      }
-    }
-    if (m.decor === 'depot') {
-      for (let x = -20; x <= 20; x += 5) this.box(g, x, 0.025, 0, 0.09, 0.03, 42, t.accent);
-      this.label(g, 'TERMINAL VELOCITY', 0, 2, -m.size + 0.02, 15, 1.6);
-      for (const s of [-1, 1]) this.label(g, s < 0 ? '01' : '02', s * 8, 2, s * 3 + 9.52, 2, 1.1);
-    }
-    this.label(
-      g,
-      m.name.toUpperCase(),
-      0,
-      1.4,
-      m.size - 0.02,
-      Math.min(15, m.name.length * 0.8),
-      1.2,
-      Math.PI,
-    );
+    buildArena(this);
   }
   makeOpponent() {
     const g = new THREE.Group();
@@ -404,10 +190,19 @@ export class World {
     this.camera.updateProjectionMatrix();
   }
   render(dt, match, localId, input, settings) {
+    for (const wall of this.cutawayWalls || []) {
+      wall.material.transparent = !match;
+      wall.material.opacity = match ? 1 : 0.12;
+      wall.material.depthWrite = !!match;
+    }
     this.clock += dt;
     this.kick = Math.max(0, this.kick - dt * 6);
     this.gun.visible = !!match;
-    this.opponent.visible = !!match && match.players[1 - localId].alive;
+    this.opponent.visible =
+      !!match &&
+      match.players[1 - localId].alive &&
+      sharesVisibility(this.map, match.players[localId], match.players[1 - localId]);
+    if (this.fogCurtain) this.fogCurtain.visible = !!match;
     if (match) {
       const p = match.players[localId],
         o = match.players[1 - localId];
@@ -433,7 +228,8 @@ export class World {
       this.opponent.rotation.y = o.yaw;
     } else {
       const a = 0.68 + Math.sin(this.clock * 0.06) * 0.18;
-      this.camera.position.set(Math.cos(a) * 33, 25, Math.sin(a) * 36);
+      const scale = this.map.size / 23;
+      this.camera.position.set(Math.cos(a) * 33 * scale, 28 * scale, Math.sin(a) * 36 * scale);
       this.camera.lookAt(-1, 0, 0);
       this.camera.fov = 57;
       this.camera.updateProjectionMatrix();

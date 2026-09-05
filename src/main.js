@@ -7,6 +7,7 @@ import '@fontsource/dm-sans/latin-700.css';
 import './style.css';
 import { MAPS, getMap } from './maps.js';
 import { createMatch, stepMatch, createBot, botInput, movePlayer, RULES } from './simulation.js';
+import { sharesVisibility } from './geometry.js';
 import { World } from './renderer.js';
 import { Audio } from './audio.js';
 
@@ -76,11 +77,95 @@ const esc = (s) =>
   );
 const iconArrow = '<span aria-hidden="true">↗</span>';
 function miniMap(m) {
-  const size = m.size * 2;
-  return `<svg viewBox="0 0 ${size} ${size}" aria-hidden="true"><rect x=".5" y=".5" width="${size - 1}" height="${size - 1}" fill="none" stroke="currentColor" stroke-width=".5"/>${m.blocks.map((b) => `<rect x="${b.x - b.w / 2 + m.size}" y="${b.z - b.d / 2 + m.size}" width="${b.w}" height="${b.d}" fill="currentColor"/>`).join('')}<circle cx="${m.spawn[0][0] + m.size}" cy="${m.spawn[0][2] + m.size}" r="1.7" fill="#e6f284"/><circle cx="${m.spawn[1][0] + m.size}" cy="${m.spawn[1][2] + m.size}" r="1.7" fill="#ed987f"/></svg>`;
+  const size = m.size * 2,
+    [ex, ez] = m.extent || [m.size, m.size];
+  return (
+    '<svg viewBox="0 0 ' +
+    size +
+    ' ' +
+    size +
+    '" aria-hidden="true"><rect x="' +
+    (m.size - ex) +
+    '" y="' +
+    (m.size - ez) +
+    '" width="' +
+    ex * 2 +
+    '" height="' +
+    ez * 2 +
+    '" fill="none" stroke="currentColor" stroke-width=".5"/>' +
+    m.blocks
+      .map(
+        (b) =>
+          '<rect x="' +
+          (b.x - b.w / 2 + m.size) +
+          '" y="' +
+          (b.z - b.d / 2 + m.size) +
+          '" width="' +
+          b.w +
+          '" height="' +
+          b.d +
+          '" fill="' +
+          ([
+            'deck',
+            'step',
+            'concourse',
+            'roof',
+            'awning',
+            'catwalk',
+            'grating',
+            'overpass',
+            'shelter',
+            'bridge',
+          ].includes(b.kind)
+            ? '#8eae82'
+            : 'currentColor') +
+          '" opacity=".8" transform="rotate(' +
+          ((b.yaw || 0) * -180) / Math.PI +
+          ' ' +
+          (b.x + m.size) +
+          ' ' +
+          (b.z + m.size) +
+          ')"/>',
+      )
+      .join('') +
+    m.spawn
+      .map(
+        (s, i) =>
+          '<circle cx="' +
+          (s[0] + m.size) +
+          '" cy="' +
+          (s[2] + m.size) +
+          '" r="1.7" fill="' +
+          (i ? '#ed987f' : '#e6f284') +
+          '"/>',
+      )
+      .join('') +
+    '</svg>'
+  );
+}
+function showLayoutNotes() {
+  const m = getMap(selected),
+    overlay = document.createElement('div');
+  overlay.className = 'modal-shade';
+  overlay.innerHTML =
+    '<section class="modal wide layout-modal"><div class="eyebrow">REFERENCE STUDY / ' +
+    m.reference +
+    '</div><h2>' +
+    m.name +
+    '</h2><div class="layout-study">' +
+    miniMap(m) +
+    '<div><p class="muted">' +
+    m.description +
+    '</p><p class="muted"><b>' +
+    m.fidelity +
+    '</b><br>Approximate dimensions, reconstructed from visual references. Not verified 1:1 geometry.</p><p class="muted">HEIGHT CHANGE: ' +
+    m.elevation +
+    ' m<br>Green: decks and stairs</p><a class="quiet" href="https://github.com/Adam-Vozzo/game11/blob/main/docs/map-research.md" target="_blank" rel="noopener">SOURCE NOTES ↗</a></div></div><button class="primary" id="close-layout">BACK TO ARENA SELECTION ↗</button></section>';
+  app.append(overlay);
+  overlay.querySelector('#close-layout').onclick = () => overlay.remove();
 }
 function topbar() {
-  return '<header class="topbar"><a class="brand" href="/" aria-label="Elephant Duel Club home"><span class="brand-mark">E<span>•</span></span><span>ELEPHANT<br><small>DUEL CLUB</small></span></a><div class="build-tag"><i></i> PROTOTYPE 001 <span> / </span> DESKTOP FPS</div><button class="quiet" id="settings">SETTINGS <span>⚙</span></button></header>';
+  return '<header class="topbar"><a class="brand" href="/" aria-label="Elephant Duel Club home"><span class="brand-mark">E<span>•</span></span><span>ELEPHANT<br><small>DUEL CLUB</small></span></a><div class="build-tag"><i></i> PROTOTYPE 002 <span> / </span> DESKTOP FPS</div><button class="quiet" id="settings">SETTINGS <span>⚙</span></button></header>';
 }
 function wireSettings() {
   document.querySelector('#settings')?.addEventListener('click', showSettings);
@@ -94,7 +179,7 @@ function showMenu() {
   world.load(selected);
   app.className = 'menu';
   const m = getMap(selected);
-  app.innerHTML = `${topbar()}<main class="launch"><section class="intro"><div class="eyebrow"><span class="line"></span> TWO PLAYERS. NO SECOND CHANCES.</div><h1>BIG GUN.<br>SMALL <span>WORLD.</span></h1><p class="lead">A little arena. An elephant rifle.<br>Settle it in thirty seconds.</p><div class="rules"><span><b>01</b> SHOT TO KILL</span><span><b>02</b> IN THE CHAMBER</span><span><b>07</b> ROUNDS TO WIN</span></div><div class="play-panel"><div class="mode-toggle" role="group" aria-label="Opponent"><button data-mode="ai" class="${mode === 'ai' ? 'active' : ''}">SOLO VS AI</button><button data-mode="friend" class="${mode === 'friend' ? 'active' : ''}">1V1 WITH A FRIEND ${iconArrow}</button></div><div class="match-options"><label>${mode === 'ai' ? 'OPPONENT' : 'CONNECTION'}${mode === 'ai' ? `<select id="difficulty" aria-label="AI difficulty"><option value="easy">Easy / warm up</option><option value="normal">Normal / keep moving</option><option value="hard">Hard / good luck</option></select>` : '<span class="option-value">Private room · 2 players</span>'}</label><label class="rotation"><input type="checkbox" id="rotate" ${rotate ? 'checked' : ''}> ROTATE ARENAS</label></div><button class="primary" id="play">${mode === 'ai' ? 'ENTER THE ARENA' : 'PLAY WITH A FRIEND'} ${iconArrow}</button><div class="play-foot"><span class="dot"></span>${mode === 'ai' ? 'NO SIGN-UP. JUST ONE MORE ROUND.' : 'CREATE A ROOM. SEND A CODE. SETTLE IT.'}</div></div></section><aside class="scene-caption"><span class="coordinate">${String(MAPS.indexOf(m) + 1).padStart(2, '0')} / 10 &nbsp; • &nbsp; LIVE ARENA PREVIEW</span><h2>${m.name}</h2><p>${m.description}</p><div class="scene-tags"><span>${m.tag.split(' / ')[0]}</span><span>1V1</span><span>30 SEC</span></div></aside></main><section class="arena-library"><div class="library-heading"><h3>CHOOSE YOUR GROUND <span>10 ARENAS</span></h3><span>SMALL MAPS. BIG CONSEQUENCES.</span></div><div class="arena-list">${MAPS.map((a, i) => `<button class="arena-card ${a.id === selected ? 'selected' : ''}" data-map="${a.id}" aria-pressed="${a.id === selected}"><div class="map-top"><span>${String(i + 1).padStart(2, '0')}</span>${a.id === selected ? '<i></i>' : ''}</div>${miniMap(a)}<strong>${a.name}</strong><small>${a.tag.split(' / ')[0]}</small></button>`).join('')}</div></section><footer class="footer"><span>MOVE <kbd>W A S D</kbd> &nbsp; AIM <kbd>MOUSE</kbd> &nbsp; SHOOT <kbd>LMB</kbd> &nbsp; JUMP <kbd>SPACE</kbd></span><span>LESS WAITING. MORE DUELLING. <b>↗</b></span></footer>`;
+  app.innerHTML = `${topbar()}<main class="launch"><section class="intro"><div class="eyebrow"><span class="line"></span> TWO PLAYERS. NO SECOND CHANCES.</div><h1>BIG GUN.<br>SMALL <span>WORLD.</span></h1><p class="lead">A little arena. An elephant rifle.<br>Settle it in thirty seconds.</p><div class="rules"><span><b>01</b> SHOT TO KILL</span><span><b>02</b> IN THE CHAMBER</span><span><b>07</b> ROUNDS TO WIN</span></div><div class="play-panel"><div class="mode-toggle" role="group" aria-label="Opponent"><button data-mode="ai" class="${mode === 'ai' ? 'active' : ''}">SOLO VS AI</button><button data-mode="friend" class="${mode === 'friend' ? 'active' : ''}">1V1 WITH A FRIEND ${iconArrow}</button></div><div class="match-options"><label>${mode === 'ai' ? 'OPPONENT' : 'CONNECTION'}${mode === 'ai' ? `<select id="difficulty" aria-label="AI difficulty"><option value="easy">Easy / warm up</option><option value="normal">Normal / keep moving</option><option value="hard">Hard / good luck</option></select>` : '<span class="option-value">Private room · 2 players</span>'}</label><label class="rotation"><input type="checkbox" id="rotate" ${rotate ? 'checked' : ''}> ROTATE ARENAS</label></div><button class="primary" id="play">${mode === 'ai' ? 'ENTER THE ARENA' : 'PLAY WITH A FRIEND'} ${iconArrow}</button><div class="play-foot"><span class="dot"></span>${mode === 'ai' ? 'NO SIGN-UP. JUST ONE MORE ROUND.' : 'CREATE A ROOM. SEND A CODE. SETTLE IT.'}</div></div></section><aside class="scene-caption"><span class="coordinate">${String(MAPS.indexOf(m) + 1).padStart(2, '0')} / 10 &nbsp; • &nbsp; REFERENCE LAYOUT / HEIGHT STUDY</span><h2>${m.name}</h2><p>${m.description}</p><button class="quiet layout-notes" id="layout-notes">LAYOUT & REFERENCE ↗</button><div class="scene-tags"><span>${m.tag.split(' / ')[0]}</span><span>1V1</span><span>30 SEC</span></div></aside></main><section class="arena-library"><div class="library-heading"><h3>CHOOSE YOUR GROUND <span>10 ARENAS</span></h3><span>SMALL MAPS. BIG CONSEQUENCES.</span></div><div class="arena-list">${MAPS.map((a, i) => `<button class="arena-card ${a.id === selected ? 'selected' : ''}" data-map="${a.id}" aria-pressed="${a.id === selected}"><div class="map-top"><span>${String(i + 1).padStart(2, '0')}</span>${a.id === selected ? '<i></i>' : ''}</div>${miniMap(a)}<strong>${a.name}</strong><small>${a.tag.split(' / ')[0]}</small></button>`).join('')}</div></section><footer class="footer"><span>MOVE <kbd>W A S D</kbd> &nbsp; AIM <kbd>MOUSE</kbd> &nbsp; SHOOT <kbd>LMB</kbd> &nbsp; JUMP <kbd>SPACE</kbd></span><span>LESS WAITING. MORE DUELLING. <b>↗</b></span></footer>`;
   document.querySelectorAll('[data-map]').forEach(
     (el) =>
       (el.onclick = () => {
@@ -120,6 +205,7 @@ function showMenu() {
   }
   document.querySelector('#play').onclick = () => (mode === 'ai' ? startSolo() : showFriends());
   wireSettings();
+  document.querySelector('#layout-notes')?.addEventListener('click', showLayoutNotes);
 }
 function saveSettings() {
   try {
@@ -291,7 +377,11 @@ function syncMatch() {
     if (ev.id <= lastEvent) continue;
     lastEvent = ev.id;
     if (ev.type === 'shot') {
-      world.shot(ev, localId);
+      if (
+        ev.player === localId ||
+        sharesVisibility(getMap(match.mapId), match.players[localId], match.players[1 - localId])
+      )
+        world.shot(ev, localId);
       audio.shot(ev.player === localId);
       if (ev.hit) {
         if (ev.player === localId) {

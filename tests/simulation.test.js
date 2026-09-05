@@ -11,6 +11,8 @@ import {
   findPath,
   createBot,
   botInput,
+  positionClear,
+  surfacesAt,
 } from '../src/simulation.js';
 const empty = { size: 30, blocks: [] };
 function live() {
@@ -25,16 +27,15 @@ test('every arena has unobstructed spawns and a traversable path between them', 
   for (const map of MAPS) {
     for (const [x, y, z] of map.spawn)
       assert.ok(
-        !map.blocks.some(
-          (b) => Math.abs(x - b.x) < b.w / 2 + 0.4 && Math.abs(z - b.z) < b.d / 2 + 0.4,
-        ),
+        positionClear(map, x, y, z) &&
+          surfacesAt(map, x, z).some((top) => Math.abs(top - y) < 0.01),
         map.id,
       );
     assert.ok(
       findPath(
         map,
-        { x: map.spawn[0][0], z: map.spawn[0][2] },
-        { x: map.spawn[1][0], z: map.spawn[1][2] },
+        { x: map.spawn[0][0], y: map.spawn[0][1], z: map.spawn[0][2] },
+        { x: map.spawn[1][0], y: map.spawn[1][1], z: map.spawn[1][2] },
       ).length,
       map.id,
     );

@@ -49,22 +49,24 @@ This repository does not automatically deploy or provision a paid service.
 
 Sensitivity, field of view, volume, and AI difficulty are saved in browser storage. Solo play pauses when the mouse is released or the window loses focus. **Online matches keep running while paused.** Both players must request a rematch after an online match finishes.
 
-## Ten original arena blockouts
+## Ten researched arena reconstructions
 
-These are original, procedural interpretations of spatial ideas from the references, not asset rips or exact reconstructions. No original games' models, textures, music, logos, or audio are included.
+The arenas were reworked from online overhead maps and screenshots. They now follow the reference landmarks and routes more closely, with real stairs, upper floors, overhead passages, and height-aware AI navigation. **These are approximate reconstructions, not verified 1:1 maps.** See the [reference study](docs/map-research.md) for all ten sources, chosen versions, crop boundaries, and remaining differences. The menu's **Layout & reference** button opens an enlarged plan and fidelity notes.
 
-| Arena             | Layout reference                    | Combat idea                                  |
-| ----------------- | ----------------------------------- | -------------------------------------------- |
-| Airframe          | Afghan plane, Modern Warfare 2      | Central fuselage, exposed flanks, low wings  |
-| Old Quarter       | Hyrule town square, Ocarina of Time | Fountain and circular stall routes           |
-| Last Train        | Metro, Battlefield 3                | Parallel platforms and long train cover      |
-| Dead End          | Streets, GTA IV                     | Four corners around a street intersection    |
-| After Hours       | School, Tony Hawk                   | Tables, ledges, and a jumpable central stage |
-| Saltwell          | Joppa, Caves of Qud                 | Mud-brick homes, plants, and a village well  |
-| Highrise          | Apartment rooftop, Left 4 Dead      | Rooftop shed, vents, and skyline             |
-| Control Group     | GLaDOS chamber, Portal              | Central core and offset panel cover          |
-| The Pit           | Roshan pit, Dota                    | Rock horseshoe and river crossing            |
-| Terminal Velocity | Bus depot, Jet Set Radio Future     | Alternating bus lanes and end flanks         |
+| Arena             | Layout reference                      | Combat idea                                         |
+| ----------------- | ------------------------------------- | --------------------------------------------------- |
+| Airframe          | Afghan plane, MW2 (2009)              | Hollow aircraft, high cliff, cave and bunker        |
+| Old Quarter       | Child-era Hyrule Market, OoT          | Perimeter shops, fountain, western back alley       |
+| Last Train        | Operation Metro, BF3                  | Lower platforms, escalators and upper ticket hall   |
+| Dead End          | Star Junction, GTA IV                 | Diagonal Burlesque / Denver–Exeter crossing         |
+| After Hours       | School, THPS1                         | Gym roof, starting awning, ditch bridges, two pools |
+| Saltwell          | Joppa, Caves of Qud                   | Fixed village arrangement and open huts             |
+| Highrise          | No Mercy apartment starting roof, L4D | Skylight drops and stairwell return route           |
+| Control Group     | GLaDOS chamber, Portal 1              | Circular platform, curved stairs, upper gallery     |
+| The Pit           | Classic river Roshan pit, Dota 2      | Single entrance and bilateral visibility boundary   |
+| Terminal Velocity | Shibuya Terminal, JSRF                | Open bus plaza, branching exits, raised routes      |
+
+On The Pit, players on opposite sides of the pit boundary cannot see each other, and the AI cannot target across it. Blind fire can still hit. The dark entrance curtain marks the boundary. This is entity visibility rather than a full terrain fog-of-war system.
 
 ## Development
 
@@ -81,8 +83,11 @@ For the reproducible browser check, run `npx playwright install chromium` once, 
 Code guide:
 
 - `src/simulation.js`: shared movement, collision, ray hits, ammunition, rounds, bot navigation.
-- `src/maps.js`: collision blockouts, spawns, themes, and reference notes.
-- `src/renderer.js`: Three.js scenery, opponent, viewmodel, lights, and shot effects.
+- `src/maps.js`: arena metadata and themes.
+- `src/layouts.js`: reference-based collision layouts, floors, spawns, and landmark labels.
+- `src/geometry.js`: shared rotated boxes, stairs, rooms, and visibility zones.
+- `src/arena-renderer.js`: procedural map scenery built from the collision layout.
+- `src/renderer.js`: opponent, viewmodel, lights, and shot effects.
 - `src/main.js`: menus, controls, local simulation, prediction, and networking.
 - `src/audio.js`: synthesized rifle and feedback sounds.
 - `server.js`: authoritative matches, private rooms, static files, and input validation.
@@ -91,6 +96,6 @@ The server simulates at 60 Hz and broadcasts at 20 Hz. The client predicts local
 
 ## Prototype limits
 
-This is a playable first pass with simple geometry and collision. It does not have matchmaking, accounts, ranked play, mobile controls, controllers, advanced animation, lag compensation, sophisticated anti-cheat, or persistent room storage. High-latency online movement can visibly correct. Rock/plane cover uses intentionally simple box collision, and arena edges are blocked. AI routes on a coarse grid and is less capable than a human around vertical cover.
+This is a playable prototype with simplified geometry. It does not have matchmaking, accounts, ranked play, mobile controls, controllers, advanced animation, lag compensation, sophisticated anti-cheat, or persistent room storage. High-latency online movement can visibly correct. Terrain and round surfaces are assembled from boxes, and crop edges are blocked. AI navigation handles multiple floors but is still less capable than a human. Map distances and heights are estimated from images; several access routes were adapted for FPS movement. No original games' models, textures, music, logos, or audio are included.
 
 Three.js supplies the rendering; Vite bundles the client; `ws` handles networking. Barlow Condensed and DM Sans are bundled through Fontsource under their included open font licenses. Everything required to play is served locally after installation and build.

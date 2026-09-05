@@ -8,6 +8,34 @@
   --muted: #aeb5a4;
   --line: rgba(233, 239, 211, 0.2);
 }
+.layout-study {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  align-items: center;
+}
+.layout-study svg {
+  width: 100%;
+  color: #b5c49c;
+  max-height: 300px;
+}
+.layout-notes {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #e6f284;
+  padding: 6px 0 13px;
+}
+.layout-modal .eyebrow {
+  line-height: 1.6;
+}
+@media (max-width: 650px) {
+  .layout-study {
+    grid-template-columns: 1fr;
+  }
+  .layout-study svg {
+    max-height: 200px;
+  }
+}
 * {
   box-sizing: border-box;
 }

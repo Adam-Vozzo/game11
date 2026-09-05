@@ -26,7 +26,17 @@ try {
     await page.locator(`[data-map="${map.id}"]`).click();
     await page.waitForTimeout(100);
     assert.equal(await page.locator('.scene-caption h2').textContent(), map.name);
+    await page.locator('#app').evaluate((element) => {
+      element.style.visibility = 'hidden';
+    });
+    await page.screenshot({ path: `test-results/arena-${map.id}.png` });
+    await page.locator('#app').evaluate((element) => {
+      element.style.visibility = '';
+    });
   }
+  await page.locator('#layout-notes').click();
+  assert.match(await page.locator('.layout-modal').innerText(), /Not verified 1:1 geometry/);
+  await page.locator('#close-layout').click();
   await page.locator('[data-map="airframe"]').click();
   await page.locator('#play').click();
   await page.waitForFunction(() => document.pointerLockElement !== null);

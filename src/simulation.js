@@ -1,4 +1,5 @@
 import { getMap, MAPS } from './maps.js';
+import { localPoint, overlaps, extents, sharesVisibility } from './geometry.js';
 export const RULES = {
   speed: 10,
   sprint: 14,
@@ -6,6 +7,7 @@ export const RULES = {
   gravity: 25,
   radius: 0.38,
   height: 1.7,
+  stepHeight: 0.32,
   reload: 1.35,
   cooldown: 0.48,
   roundTime: 30,
@@ -41,8 +43,30 @@ export function bounds(b) {
     { x: b.x + b.w / 2, y: b.y + b.h, z: b.z + b.d / 2 },
   ];
 }
+export function raySolid(b, o, d) {
+  const p = localPoint(b, o),
+    c = Math.cos(b.yaw || 0),
+    s = Math.sin(b.yaw || 0);
+  return rayBox(
+    p,
+    { x: c * d.x - s * d.z, y: d.y, z: s * d.x + c * d.z },
+    { x: -b.w / 2, y: b.y, z: -b.d / 2 },
+    { x: b.w / 2, y: b.y + b.h, z: b.d / 2 },
+  );
+}
 export function wallDistance(map, o, d) {
-  return Math.min(...map.blocks.map((b) => rayBox(o, d, ...bounds(b))), 100);
+  return Math.min(...map.blocks.map((b) => raySolid(b, o, d)), 100);
+}
+export function positionClear(map, x, y, z, radius = RULES.radius) {
+  return !map.blocks.some(
+    (b) => overlaps(b, x, z, radius) && y < b.y + b.h - 0.015 && y + RULES.height > b.y + 0.015,
+  );
+}
+export function surfacesAt(map, x, z, radius = RULES.radius) {
+  const levels = [0, ...map.blocks.filter((b) => overlaps(b, x, z, radius)).map((b) => b.y + b.h)];
+  return [...new Set(levels)]
+    .filter((y) => positionClear(map, x, y, z, radius))
+    .sort((a, b) => a - b);
 }
 export function makePlayer(id) {
   return {
@@ -72,49 +96,65 @@ export function movePlayer(p, input, map, dt) {
     speed = input.sprint ? RULES.sprint : RULES.speed;
   const dx = ((-Math.sin(p.yaw) * forward + Math.cos(p.yaw) * side) / n) * speed * dt,
     dz = ((-Math.cos(p.yaw) * forward - Math.sin(p.yaw) * side) / n) * speed * dt;
-  const blocked = (x, z) =>
-    map.blocks.some(
-      (b) =>
-        p.y < b.y + b.h - 0.04 &&
-        p.y + RULES.height > b.y + 0.04 &&
-        x + RULES.radius > b.x - b.w / 2 &&
-        x - RULES.radius < b.x + b.w / 2 &&
-        z + RULES.radius > b.z - b.d / 2 &&
-        z - RULES.radius < b.z + b.d / 2,
-    );
-  const limit = map.size - RULES.radius;
-  if (!blocked(p.x + dx, p.z)) p.x = Math.max(-limit, Math.min(limit, p.x + dx));
-  if (!blocked(p.x, p.z + dz)) p.z = Math.max(-limit, Math.min(limit, p.z + dz));
-  if (input.jump && p.ground) {
+  const [ex, ez] = extents(map),
+    parts = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.16));
+  const jump = input.jump && p.ground;
+  if (jump) {
     p.vy = RULES.jump;
     p.ground = false;
+  }
+  const slide = (x, z) => {
+    x = Math.max(-ex + RULES.radius, Math.min(ex - RULES.radius, x));
+    z = Math.max(-ez + RULES.radius, Math.min(ez - RULES.radius, z));
+    if (positionClear(map, x, p.y, z)) {
+      p.x = x;
+      p.z = z;
+      return;
+    }
+    if (p.ground && !jump) {
+      const candidates = surfacesAt(map, x, z).filter(
+        (y) => y > p.y && y <= p.y + RULES.stepHeight + 0.001,
+      );
+      if (candidates.length) {
+        p.y = candidates[0];
+        p.x = x;
+        p.z = z;
+        p.vy = 0;
+      }
+    }
+  };
+  for (let i = 0; i < parts; i++) {
+    slide(p.x + dx / parts, p.z);
+    slide(p.x, p.z + dz / parts);
   }
   const oldY = p.y;
   p.vy -= RULES.gravity * dt;
   p.y += p.vy * dt;
-  p.ground = false;
   let floor = 0;
   for (const b of map.blocks) {
-    if (
-      p.x + RULES.radius > b.x - b.w / 2 &&
-      p.x - RULES.radius < b.x + b.w / 2 &&
-      p.z + RULES.radius > b.z - b.d / 2 &&
-      p.z - RULES.radius < b.z + b.d / 2
-    ) {
-      const top = b.y + b.h;
-      if (oldY >= top - 0.06 && p.y <= top && p.vy <= 0) floor = Math.max(floor, top);
-      if (oldY + RULES.height <= b.y && p.y + RULES.height >= b.y && p.vy > 0) {
-        p.y = b.y - RULES.height;
-        p.vy = 0;
-      }
+    if (!overlaps(b, p.x, p.z)) continue;
+    const top = b.y + b.h;
+    if (oldY >= top - 0.02 && p.y <= top && p.vy <= 0) floor = Math.max(floor, top);
+    if (oldY + RULES.height <= b.y + 0.01 && p.y + RULES.height >= b.y && p.vy > 0) {
+      p.y = b.y - RULES.height;
+      p.vy = 0;
     }
   }
-  if (p.y <= floor) {
+  // Follow descending stair treads without bouncing, but allow genuine drops.
+  if (p.ground && !jump) {
+    const below = surfacesAt(map, p.x, p.z).filter(
+      (y) => y <= oldY + 0.01 && y >= oldY - RULES.stepHeight - 0.01,
+    );
+    if (below.length) floor = Math.max(floor, ...below);
+  }
+  p.ground = false;
+  if (p.y <= floor + 0.001) {
     p.y = floor;
     p.vy = 0;
     p.ground = true;
   }
 }
+
 export function createMatch(mapId = 'airframe', rotate = false) {
   const m = {
     mapId: getMap(mapId).id,
@@ -243,66 +283,112 @@ export function stepMatch(m, inputs, dt) {
   for (const i of order) if (inputs[i]?.fire) shoot(m, i);
   if (m.timer <= 0 && m.phase === 'live') endRound(m, null);
 }
-// Grid search gives the bot routes around actual map cover.
+// Cache a multi-level surface graph; bridges retain both upper and lower nodes.
+const navigation = new WeakMap();
+function navGraph(map) {
+  if (navigation.has(map)) return navigation.get(map);
+  const [ex, ez] = extents(map),
+    cell = 1,
+    cols = Math.ceil(ex * 2),
+    rows = Math.ceil(ez * 2),
+    nodes = [],
+    columns = new Map();
+  for (let iz = 0; iz < rows; iz++)
+    for (let ix = 0; ix < cols; ix++) {
+      const x = -ex + (ix + 0.5) * cell,
+        z = -ez + (iz + 0.5) * cell;
+      const stack = surfacesAt(map, x, z, 0.42).map((y) => {
+        const node = { x, y, z, ix, iz, id: nodes.length, edges: [] };
+        nodes.push(node);
+        return node;
+      });
+      columns.set(ix + iz * cols, stack);
+    }
+  for (const node of nodes)
+    for (const [dx, dz] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const ix = node.ix + dx,
+        iz = node.iz + dz;
+      if (ix < 0 || iz < 0 || ix >= cols || iz >= rows) continue;
+      for (const other of columns.get(ix + iz * cols) || []) {
+        const rise = other.y - node.y;
+        if (rise > 1.25 || rise < -7) continue;
+        if (
+          positionClear(
+            map,
+            (node.x + other.x) / 2,
+            Math.max(node.y, other.y),
+            (node.z + other.z) / 2,
+            0.39,
+          )
+        )
+          node.edges.push(other.id);
+      }
+    }
+  const graph = { nodes };
+  navigation.set(map, graph);
+  return graph;
+}
 export function findPath(map, start, end) {
-  const cell = 2,
-    size = Math.ceil((map.size * 2) / cell),
-    toGrid = (v) => Math.max(0, Math.min(size - 1, Math.floor((v + map.size) / cell))),
-    world = (v) => v * cell - map.size + cell / 2;
-  const sx = toGrid(start.x),
-    sz = toGrid(start.z),
-    ex = toGrid(end.x),
-    ez = toGrid(end.z),
-    key = (x, z) => x + z * size,
-    source = key(sx, sz),
-    target = key(ex, ez),
-    queue = [[sx, sz]],
+  const { nodes } = navGraph(map);
+  if (!nodes.length) return [];
+  const nearest = (p) =>
+    nodes.reduce(
+      (best, n) => {
+        const dist = (n.x - p.x) ** 2 + (n.z - p.z) ** 2 + ((n.y - (p.y || 0)) * 3) ** 2;
+        return dist < best.dist ? { id: n.id, dist } : best;
+      },
+      { id: 0, dist: Infinity },
+    ).id;
+  const source = nearest(start),
+    target = nearest(end),
+    queue = [source],
     visited = new Map([[source, null]]);
   for (let i = 0; i < queue.length; i++) {
-    const [x, z] = queue[i],
-      k = key(x, z);
-    if (k === target) break;
-    for (const [a, b] of [
-      [x + 1, z],
-      [x - 1, z],
-      [x, z + 1],
-      [x, z - 1],
-    ]) {
-      const nk = key(a, b);
-      if (a < 0 || b < 0 || a >= size || b >= size || visited.has(nk)) continue;
-      const wx = world(a),
-        wz = world(b);
-      if (
-        map.blocks.some(
-          (o) => Math.abs(wx - o.x) < o.w / 2 + 0.6 && Math.abs(wz - o.z) < o.d / 2 + 0.6,
-        )
-      )
-        continue;
-      visited.set(nk, k);
-      queue.push([a, b]);
+    const id = queue[i];
+    if (id === target) break;
+    for (const next of nodes[id].edges) {
+      if (visited.has(next)) continue;
+      visited.set(next, id);
+      queue.push(next);
     }
   }
   if (!visited.has(target)) return [];
   const path = [];
-  for (let k = target; k !== source; k = visited.get(k))
-    path.push({ x: world(k % size), z: world(Math.floor(k / size)) });
+  for (let k = target; k !== source; k = visited.get(k)) {
+    const { x, y, z } = nodes[k];
+    path.push({ x, y, z });
+  }
   return path.reverse();
 }
 export function createBot() {
-  return { time: 0, visible: 0, path: [], nextPath: 0, error: 0, nextError: 0 };
+  return { time: 0, visible: 0, path: [], nextPath: 0, error: 0, nextError: 0, round: 0 };
 }
 export function botInput(m, bot, dt, difficulty = 'normal') {
   const p = m.players[1],
     target = m.players[0],
     map = getMap(m.mapId);
   bot.time += dt;
+  if (bot.round !== m.round) {
+    bot.path = [];
+    bot.nextPath = 0;
+    bot.visible = 0;
+    bot.round = m.round;
+  }
   const dx = target.x - p.x,
     dz = target.z - p.z,
     dist = Math.hypot(dx, dz),
     yaw = Math.atan2(-dx, -dz),
     pitch = Math.atan2(target.y + 0.95 - (p.y + 1.48), dist);
   const d = direction(yaw, pitch),
-    visible = wallDistance(map, { x: p.x, y: p.y + 1.48, z: p.z }, d) > dist - 0.5;
+    visible =
+      sharesVisibility(map, p, target) &&
+      wallDistance(map, { x: p.x, y: p.y + 1.48, z: p.z }, d) >
+        Math.hypot(dist, target.y - p.y) - 0.5;
   if (m.phase !== 'live' || !target.alive) {
     bot.visible = 0;
     return {};
@@ -326,7 +412,11 @@ export function botInput(m, bot, dt, difficulty = 'normal') {
       bot.path = findPath(map, p, target);
       bot.nextPath = bot.time + 0.6;
     }
-    while (bot.path.length && Math.hypot(bot.path[0].x - p.x, bot.path[0].z - p.z) < 1.2)
+    while (
+      bot.path.length &&
+      Math.hypot(bot.path[0].x - p.x, bot.path[0].z - p.z) < 0.55 &&
+      Math.abs(bot.path[0].y - p.y) < 0.5
+    )
       bot.path.shift();
     const next = bot.path[0];
     if (next) {
@@ -338,12 +428,13 @@ export function botInput(m, bot, dt, difficulty = 'normal') {
     forward = dist < 7 ? -0.6 : dist > 15 ? 0.35 : 0;
   }
   return {
-    yaw: visible ? yaw + bot.error : moveYaw,
+    yaw: !visible || dist > 23 ? moveYaw : yaw + bot.error,
     pitch: visible ? pitch + bot.error * 0.3 : 0,
     forward,
     side,
     fire: visible && bot.visible > skill.reaction,
     reload: p.ammo === 0,
-    jump: visible && Math.sin(bot.time * 2.1) > 0.995,
+    jump:
+      (bot.path[0]?.y > p.y + 0.35 && p.ground) || (visible && Math.sin(bot.time * 2.1) > 0.995),
   };
 }
