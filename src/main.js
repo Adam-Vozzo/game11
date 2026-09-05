@@ -22,6 +22,8 @@ try {
   throw error;
 }
 const audio = new Audio();
+const multiplayerURL = import.meta.env.VITE_MULTIPLAYER_URL?.trim() || '';
+const multiplayerAvailable = import.meta.env.MODE !== 'pages' || !!multiplayerURL;
 const saved = (() => {
   try {
     return JSON.parse(localStorage.getItem('rail-settings') || '{}');
@@ -165,7 +167,7 @@ function showLayoutNotes() {
   overlay.querySelector('#close-layout').onclick = () => overlay.remove();
 }
 function topbar() {
-  return '<header class="topbar"><a class="brand" href="/" aria-label="Rail Duel Club home"><span class="brand-mark">R<span>•</span></span><span>RAIL<br><small>DUEL CLUB</small></span></a><div class="build-tag"><i></i> PROTOTYPE 003 <span> / </span> DESKTOP FPS</div><button class="quiet" id="settings">SETTINGS <span>⚙</span></button></header>';
+  return '<header class="topbar"><a class="brand" href="./" aria-label="Rail Duel Club home"><span class="brand-mark">R<span>•</span></span><span>RAIL<br><small>DUEL CLUB</small></span></a><div class="build-tag"><i></i> PROTOTYPE 003 <span> / </span> DESKTOP FPS</div><button class="quiet" id="settings">SETTINGS <span>⚙</span></button></header>';
 }
 function wireSettings() {
   document.querySelector('#settings')?.addEventListener('click', showSettings);
@@ -179,7 +181,7 @@ function showMenu() {
   world.load(selected);
   app.className = 'menu';
   const m = getMap(selected);
-  app.innerHTML = `${topbar()}<main class="launch"><section class="intro"><div class="eyebrow"><span class="line"></span> TWO PLAYERS. NO SECOND CHANCES.</div><h1>BIG GUN.<br>SMALL <span>WORLD.</span></h1><p class="lead">A little arena. A single-shot railgun.<br>Settle it in thirty seconds.</p><div class="rules"><span><b>01</b> SHOT TO KILL</span><span><b>01</b> IN THE CHAMBER</span><span><b>07</b> ROUNDS TO WIN</span></div><div class="play-panel"><div class="mode-toggle" role="group" aria-label="Opponent"><button data-mode="ai" class="${mode === 'ai' ? 'active' : ''}">SOLO VS AI</button><button data-mode="friend" class="${mode === 'friend' ? 'active' : ''}">1V1 WITH A FRIEND ${iconArrow}</button></div><div class="match-options"><label>${mode === 'ai' ? 'OPPONENT' : 'CONNECTION'}${mode === 'ai' ? `<select id="difficulty" aria-label="AI difficulty"><option value="easy">Easy / warm up</option><option value="normal">Normal / keep moving</option><option value="hard">Hard / good luck</option></select>` : '<span class="option-value">Private room · 2 players</span>'}</label><label class="rotation"><input type="checkbox" id="rotate" ${rotate ? 'checked' : ''}> ROTATE ARENAS</label></div><button class="primary" id="play">${mode === 'ai' ? 'ENTER THE ARENA' : 'PLAY WITH A FRIEND'} ${iconArrow}</button><div class="play-foot"><span class="dot"></span>${mode === 'ai' ? 'NO SIGN-UP. JUST ONE MORE ROUND.' : 'CREATE A ROOM. SEND A CODE. SETTLE IT.'}</div></div></section><aside class="scene-caption"><span class="coordinate">${String(MAPS.indexOf(m) + 1).padStart(2, '0')} / 10 &nbsp; • &nbsp; REFERENCE LAYOUT / HEIGHT STUDY</span><h2>${m.name}</h2><p>${m.description}</p><button class="quiet layout-notes" id="layout-notes">LAYOUT & REFERENCE ↗</button><div class="scene-tags"><span>${m.tag.split(' / ')[0]}</span><span>1V1</span><span>30 SEC</span></div></aside></main><section class="arena-library"><div class="library-heading"><h3>CHOOSE YOUR GROUND <span>10 ARENAS</span></h3><span>SMALL MAPS. BIG CONSEQUENCES.</span></div><div class="arena-list">${MAPS.map((a, i) => `<button class="arena-card ${a.id === selected ? 'selected' : ''}" data-map="${a.id}" aria-pressed="${a.id === selected}"><div class="map-top"><span>${String(i + 1).padStart(2, '0')}</span>${a.id === selected ? '<i></i>' : ''}</div>${miniMap(a)}<strong>${a.name}</strong><small>${a.tag.split(' / ')[0]}</small></button>`).join('')}</div></section><footer class="footer"><span>MOVE <kbd>W A S D</kbd> &nbsp; AIM <kbd>MOUSE</kbd> &nbsp; SHOOT <kbd>LMB</kbd> &nbsp; JUMP <kbd>SPACE</kbd></span><span>LESS WAITING. MORE DUELLING. <b>↗</b></span></footer>`;
+  app.innerHTML = `${topbar()}<main class="launch"><section class="intro"><div class="eyebrow"><span class="line"></span> TWO PLAYERS. NO SECOND CHANCES.</div><h1>BIG GUN.<br>SMALL <span>WORLD.</span></h1><p class="lead">A little arena. A single-shot railgun.<br>Settle it in thirty seconds.</p><div class="rules"><span><b>01</b> SHOT TO KILL</span><span><b>01</b> IN THE CHAMBER</span><span><b>07</b> ROUNDS TO WIN</span></div><div class="play-panel"><div class="mode-toggle" role="group" aria-label="Opponent"><button data-mode="ai" class="${mode === 'ai' ? 'active' : ''}">SOLO VS AI</button><button data-mode="friend" ${multiplayerAvailable ? '' : 'disabled title="Friend matches are available in the multiplayer edition."'} class="${mode === 'friend' ? 'active' : ''}">1V1 WITH A FRIEND ${iconArrow}</button></div><div class="match-options"><label>${mode === 'ai' ? 'OPPONENT' : 'CONNECTION'}${mode === 'ai' ? `<select id="difficulty" aria-label="AI difficulty"><option value="easy">Easy / warm up</option><option value="normal">Normal / keep moving</option><option value="hard">Hard / good luck</option></select>` : '<span class="option-value">Private room · 2 players</span>'}</label><label class="rotation"><input type="checkbox" id="rotate" ${rotate ? 'checked' : ''}> ROTATE ARENAS</label></div><button class="primary" id="play">${mode === 'ai' ? 'ENTER THE ARENA' : 'PLAY WITH A FRIEND'} ${iconArrow}</button><div class="play-foot"><span class="dot"></span>${!multiplayerAvailable ? 'SOLO EDITION · ALL 10 ARENAS · PLAY VS AI' : mode === 'ai' ? 'NO SIGN-UP. JUST ONE MORE ROUND.' : 'CREATE A ROOM. SEND A CODE. SETTLE IT.'}</div></div></section><aside class="scene-caption"><span class="coordinate">${String(MAPS.indexOf(m) + 1).padStart(2, '0')} / 10 &nbsp; • &nbsp; REFERENCE LAYOUT / HEIGHT STUDY</span><h2>${m.name}</h2><p>${m.description}</p><button class="quiet layout-notes" id="layout-notes">LAYOUT & REFERENCE ↗</button><div class="scene-tags"><span>${m.tag.split(' / ')[0]}</span><span>1V1</span><span>30 SEC</span></div></aside></main><section class="arena-library"><div class="library-heading"><h3>CHOOSE YOUR GROUND <span>10 ARENAS</span></h3><span>SMALL MAPS. BIG CONSEQUENCES.</span></div><div class="arena-list">${MAPS.map((a, i) => `<button class="arena-card ${a.id === selected ? 'selected' : ''}" data-map="${a.id}" aria-pressed="${a.id === selected}"><div class="map-top"><span>${String(i + 1).padStart(2, '0')}</span>${a.id === selected ? '<i></i>' : ''}</div>${miniMap(a)}<strong>${a.name}</strong><small>${a.tag.split(' / ')[0]}</small></button>`).join('')}</div></section><footer class="footer"><span>MOVE <kbd>W A S D</kbd> &nbsp; AIM <kbd>MOUSE</kbd> &nbsp; SHOOT <kbd>LMB</kbd> &nbsp; JUMP <kbd>SPACE</kbd></span><span>LESS WAITING. MORE DUELLING. <b>↗</b></span></footer>`;
   document.querySelectorAll('[data-map]').forEach(
     (el) =>
       (el.onclick = () => {
@@ -237,9 +239,10 @@ function showSettings() {
   };
 }
 function showFriends() {
+  if (!multiplayerAvailable) return showMenu();
   screen = 'friends';
   app.className = 'menu';
-  app.innerHTML = `${topbar()}<div class="modal-shade friends-shade"><section class="modal wide"><div class="eyebrow">GOOD FRIENDS. BAD INTENTIONS.</div><h2>Make it personal.</h2><p class="muted">Both players need this game open on the same server. Create a room, then share its six-character code.</p><div class="friend-columns"><div><h3>Start something.</h3><p>${esc(getMap(selected).name)} · First to 7</p><button class="primary" id="create">CREATE ROOM ${iconArrow}</button></div><form id="join-form"><h3>Finish something.</h3><label class="sr-only" for="room-input">Room code</label><input class="text-input" id="room-input" placeholder="ROOM CODE" value="${esc(queuedCode)}" maxlength="6" autocomplete="off" required pattern="[a-fA-F0-9]{6}"><button class="secondary" type="submit">JOIN ROOM ${iconArrow}</button></form></div><p id="connection-status" role="status" class="status-text">Local play: start the Node server with npm start.</p><button class="quiet" id="back">← BACK TO THE CLUB</button></section></div>`;
+  app.innerHTML = `${topbar()}<div class="modal-shade friends-shade"><section class="modal wide"><div class="eyebrow">GOOD FRIENDS. BAD INTENTIONS.</div><h2>Make it personal.</h2><p class="muted">Both players need this game open on the same server. Create a room, then share its six-character code.</p><div class="friend-columns"><div><h3>Start something.</h3><p>${esc(getMap(selected).name)} · First to 7</p><button class="primary" id="create">CREATE ROOM ${iconArrow}</button></div><form id="join-form"><h3>Finish something.</h3><label class="sr-only" for="room-input">Room code</label><input class="text-input" id="room-input" placeholder="ROOM CODE" value="${esc(queuedCode)}" maxlength="6" autocomplete="off" required pattern="[a-fA-F0-9]{6}"><button class="secondary" type="submit">JOIN ROOM ${iconArrow}</button></form></div><p id="connection-status" role="status" class="status-text">Create a private room or enter an invite code.</p><button class="quiet" id="back">← BACK TO THE CLUB</button></section></div>`;
   document.querySelector('#create').onclick = () =>
     connect({ type: 'create', mapId: selected, rotate });
   document.querySelector('#join-form').onsubmit = (e) => {
@@ -257,14 +260,13 @@ function connect(message) {
   const status = document.querySelector('#connection-status');
   status.textContent = 'Connecting to the duel server…';
   const ws = new WebSocket(
-    `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/socket`,
+    multiplayerURL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/socket`,
   );
   socket = ws;
   const timeout = setTimeout(() => {
     if (ws.readyState !== WebSocket.OPEN) {
       ws.close();
-      if (status.isConnected)
-        status.textContent = 'Connection timed out. Start the game server and try again.';
+      if (status.isConnected) status.textContent = 'Connection timed out. Try again in a moment.';
     }
   }, 7000);
   ws.onopen = () => {
@@ -274,7 +276,7 @@ function connect(message) {
   ws.onerror = () => {
     if (status.isConnected)
       status.textContent =
-        'Server unavailable. Run npm run build, then npm start, and open http://localhost:3001.';
+        'The multiplayer server is unavailable. Try again later or play solo against AI.';
   };
   ws.onclose = () => {
     clearTimeout(timeout);
@@ -580,7 +582,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 showMenu();
-if (queuedCode) {
+if (queuedCode && multiplayerAvailable) {
   mode = 'friend';
   showFriends();
 }

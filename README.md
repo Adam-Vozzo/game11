@@ -4,6 +4,21 @@ A playable, fast-paced desktop FPS prototype. Two players, a single-shot railgun
 
 ## Play
 
+### GitHub Pages: play from a link
+
+The Pages edition runs all ten arenas and the AI opponent entirely in the browser. No installation or game server is needed to play solo.
+
+1. Open [repository Settings → Pages](https://github.com/Adam-Vozzo/game11/settings/pages).
+2. Under **Build and deployment → Source**, select **GitHub Actions**. Do not select the raw `main` branch: the game needs its Vite build first.
+3. Open [Actions → Deploy game to GitHub Pages](https://github.com/Adam-Vozzo/game11/actions/workflows/pages.yml) and choose **Run workflow → main**. If a run failed before Pages was enabled, rerun it after step 2.
+4. When deployment succeeds, play at **https://adam-vozzo.github.io/game11/**. Subsequent pushes to `main` rebuild and deploy automatically.
+
+The workflow builds `dist-pages/` and checks the game on a static server mounted at `/game11/` before publishing. Relative asset and home links also work with a custom domain. See [GitHub's publishing-source instructions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) and [Vite's Pages guide](https://vite.dev/guide/static-deploy.html#github-pages).
+
+**Friend matches need a separate WebSocket server.** GitHub Pages hosts static files and cannot run `server.js`. The default Pages edition clearly labels solo play and disables friend rooms. To enable friends, deploy the included Node server to a host with HTTPS/WebSocket support, add a repository **Actions variable** named `VITE_MULTIPLAYER_URL` with its full endpoint (for example, `wss://YOUR-GAME-HOST/socket`), then rerun the Pages workflow. Both players use the same Pages link and room code. This URL is public configuration, not a secret. The Node-hosted edition continues to use its own `/socket` by default.
+
+### Run locally
+
 Requires **Node.js 22.12 or newer** and a desktop browser with WebGL enabled.
 
 ```sh
@@ -76,6 +91,8 @@ Run `npm start` in one terminal for the WebSocket server, and `npm run dev` in a
 npm test        # gameplay and two-client WebSocket integration tests
 npm run build  # production client bundle
 npm run check  # both
+npm run build:pages # static solo edition in dist-pages/
+npm run test:pages  # browser check under /game11/, without the game server
 ```
 
 For the reproducible browser check, run `npx playwright install chromium` once, then `npm run test:browser` after building. It launches a temporary server and verifies all ten map selectors, pointer lock, fast clicks, reload, settings, two-player rooms, disconnect handling, and narrow-screen layout. Screenshots are written to `test-results/`. Set `BROWSER_EXECUTABLE` to use an existing Chrome executable instead of downloading Chromium.
