@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { getMap } from './maps.js';
 import { buildArena } from './arena-renderer.js';
 import { sharesVisibility } from './geometry.js';
+import { RULES } from './simulation.js';
 const V = THREE.Vector3;
 export class World {
   constructor(canvas) {
@@ -133,25 +134,48 @@ export class World {
   }
   makeGun() {
     const g = new THREE.Group();
-    const steel = this.material(0x44504b, 0.28, 0.8),
-      wood = this.material(0x77533b, 0.63),
-      edge = this.material(0xadb2a1, 0.25, 0.85);
-    this.box(g, 0, -0.12, 0.02, 0.18, 0.24, 0.67, wood);
-    this.box(g, 0, 0.005, -0.18, 0.2, 0.13, 0.52, steel);
-    for (const s of [-1, 1]) {
-      const barrel = this.cylinder(g, s * 0.062, 0.04, -0.65, 0.044, 0.049, 0.88, 0x333e3a, 16);
-      barrel.rotation.x = Math.PI / 2;
-      const bore = this.cylinder(g, s * 0.062, 0.04, -1.096, 0.03, 0.03, 0.009, 0x101918, 16);
-      bore.rotation.x = Math.PI / 2;
-      this.box(g, s * 0.062, 0.073, -0.33, 0.1, 0.025, 0.07, edge);
+    const shell = this.material(0x293b41, 0.32, 0.75),
+      edge = this.material(0xb4c4bf, 0.23, 0.85),
+      gripMaterial = this.material(0x162225, 0.8);
+    this.coil = new THREE.MeshStandardMaterial({
+      color: 0x68edff,
+      emissive: 0x29dfff,
+      emissiveIntensity: 2.8,
+      roughness: 0.2,
+    });
+    this.box(g, 0, -0.07, 0.02, 0.23, 0.24, 0.62, shell);
+    this.box(g, 0, -0.09, 0.3, 0.27, 0.27, 0.12, gripMaterial);
+    this.box(g, 0, 0.055, -0.29, 0.28, 0.23, 0.43, edge);
+    this.box(g, 0, 0.04, -0.74, 0.09, 0.09, 0.78, gripMaterial);
+    for (const side of [-1, 1]) {
+      this.box(g, side * 0.11, 0.04, -0.76, 0.075, 0.13, 0.88, shell);
+      this.box(g, side * 0.15, 0.065, -0.77, 0.015, 0.035, 0.72, this.coil);
+      for (let i = 0; i < 5; i++)
+        this.box(g, side * 0.115, 0.04, -0.48 - i * 0.135, 0.105, 0.17, 0.035, edge);
     }
-    this.box(g, 0, 0.092, -0.99, 0.018, 0.075, 0.045, edge);
-    this.box(g, 0, 0.095, -0.27, 0.018, 0.04, 0.15, edge);
-    const grip = this.box(g, 0, -0.27, 0.05, 0.13, 0.24, 0.16, wood);
+    this.box(g, 0, 0.04, -1.2, 0.32, 0.22, 0.09, shell);
+    this.box(g, 0, 0.04, -1.249, 0.085, 0.075, 0.012, this.coil);
+    this.box(g, 0, 0.195, -0.27, 0.06, 0.07, 0.12, gripMaterial);
+    this.box(g, 0, 0.235, -0.3, 0.028, 0.025, 0.04, this.coil);
+    const grip = this.box(g, 0, -0.28, 0.05, 0.14, 0.28, 0.17, gripMaterial);
     grip.rotation.x = -0.3;
     this.box(g, 0.06, -0.21, -0.34, 0.25, 0.16, 0.24, 0xa69b76);
     this.box(g, 0.08, -0.29, 0.2, 0.25, 0.23, 0.26, 0xa69b76);
-    g.position.set(0.31, -0.25, -0.35);
+    this.muzzle = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 12, 8),
+      new THREE.MeshBasicMaterial({
+        color: 0xb8faff,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    this.muzzle.position.set(0, 0.04, -1.31);
+    this.muzzle.visible = false;
+    g.add(this.muzzle);
+    this.muzzleLight = new THREE.PointLight(0x75eeff, 0, 7, 2);
+    this.muzzleLight.position.copy(this.muzzle.position);
+    g.add(this.muzzleLight);
     g.traverse((o) => {
       if (o.isMesh) {
         o.castShadow = false;
@@ -161,28 +185,52 @@ export class World {
     return g;
   }
   shot(event, localId) {
-    const points = [
-      new V(event.origin.x, event.origin.y, event.origin.z),
-      new V(event.end.x, event.end.y, event.end.z),
-    ];
-    const line = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(points),
-      new THREE.LineBasicMaterial({
-        color: event.player === localId ? 0xf4efa6 : 0xff9170,
-        transparent: true,
-        opacity: 0.9,
-      }),
-    );
-    this.scene.add(line);
-    this.effects.push({ object: line, life: 0.13, total: 0.13 });
-    if (event.player === localId) this.kick = 1;
-    const spark = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 6, 4),
-      new THREE.MeshBasicMaterial({ color: 0xffd58f }),
-    );
-    spark.position.copy(points[1]);
-    this.scene.add(spark);
-    this.effects.push({ object: spark, life: 0.17, total: 0.17 });
+    const local = event.player === localId;
+    const start = new V(event.origin.x, event.origin.y, event.origin.z);
+    const end = new V(event.end.x, event.end.y, event.end.z);
+    if (local && start.distanceTo(end) > 2) this.muzzle.getWorldPosition(start);
+    const delta = end.clone().sub(start),
+      length = delta.length();
+    const color = local ? 0x63eaff : 0xff8d68;
+    for (const [radius, tint, duration] of [
+      [0.025, 0xf0ffff, 0.13],
+      [0.04, color, 0.3],
+    ]) {
+      const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, Math.max(0.001, length), 8),
+        new THREE.MeshBasicMaterial({
+          color: tint,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      beam.position.copy(start).addScaledVector(delta, 0.5);
+      if (length > 0) beam.quaternion.setFromUnitVectors(new V(0, 1, 0), delta.clone().normalize());
+      this.scene.add(beam);
+      this.effects.push({ object: beam, life: duration, total: duration });
+    }
+    if (local) this.kick = 1;
+    for (let i = 0; i < 12; i++) {
+      const spark = new THREE.Mesh(
+        new THREE.SphereGeometry(i === 0 ? 0.2 : 0.035, 6, 4),
+        new THREE.MeshBasicMaterial({
+          color: i === 0 ? 0xffffff : color,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      spark.position.copy(end);
+      this.scene.add(spark);
+      const life = i === 0 ? 0.16 : 0.25 + Math.random() * 0.2;
+      this.effects.push({
+        object: spark,
+        life,
+        total: life,
+        velocity: new V((Math.random() - 0.5) * 8, Math.random() * 6, (Math.random() - 0.5) * 8),
+      });
+    }
   }
   resize() {
     this.renderer.setSize(innerWidth, innerHeight);
@@ -196,7 +244,7 @@ export class World {
       wall.material.depthWrite = !!match;
     }
     this.clock += dt;
-    this.kick = Math.max(0, this.kick - dt * 6);
+    this.kick = Math.max(0, this.kick - dt * 4.5);
     this.gun.visible = !!match;
     this.opponent.visible =
       !!match &&
@@ -208,21 +256,33 @@ export class World {
         o = match.players[1 - localId];
       this.camera.position.set(p.x, p.y + 1.48, p.z);
       this.camera.rotation.set(input.pitch, input.yaw, 0, 'YXZ');
-      this.camera.rotation.x -= this.kick * 0.035;
+      this.camera.rotation.x += this.kick * 0.065;
+      this.camera.rotation.z = Math.sin(this.clock * 95) * this.kick * 0.008;
+      this.muzzle.visible = this.kick > 0.65;
+      this.muzzle.scale.setScalar(0.7 + this.kick * 1.7);
+      this.muzzle.material.opacity = this.kick;
+      this.muzzleLight.intensity = this.kick > 0.65 ? this.kick * 12 : 0;
+      const charge = p.reload > 0 ? 1 - p.reload / RULES.reload : p.ammo;
+      this.coil.emissiveIntensity = 0.15 + charge * 2.65;
       const moving = Math.abs(input.forward) + Math.abs(input.side) > 0 && match.phase === 'live';
       const bob = moving ? Math.sin(this.clock * 15) * 0.012 : Math.sin(this.clock * 2) * 0.003;
       this.gun.position.set(
         input.aim ? 0.06 : 0.31,
-        -0.25 + bob - this.kick * 0.02,
-        -0.5 + this.kick * 0.1,
+        -0.25 + bob + this.kick * 0.045,
+        -0.5 + this.kick * 0.24,
       );
       this.gun.rotation.set(
-        this.kick * 0.13 + (p.reload > 0 ? -Math.sin((p.reload / 1.35) * Math.PI) * 0.65 : 0),
+        this.kick * 0.32 +
+          (p.reload > 0 ? -Math.sin((p.reload / RULES.reload) * Math.PI) * 0.12 : 0),
         0,
-        p.reload > 0 ? -0.4 : 0,
+        p.reload > 0 ? -Math.sin((p.reload / RULES.reload) * Math.PI) * 0.08 : 0,
       );
       const fov = input.aim ? settings.fov * 0.75 : settings.fov + (input.sprint && moving ? 5 : 0);
-      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, fov, dt * 12);
+      this.camera.fov = THREE.MathUtils.lerp(
+        this.camera.fov,
+        fov + this.kick * 3,
+        Math.min(1, dt * 12),
+      );
       this.camera.updateProjectionMatrix();
       this.opponent.position.set(o.x, o.y, o.z);
       this.opponent.rotation.y = o.yaw;
@@ -242,6 +302,7 @@ export class World {
         e.object.material.dispose();
         return false;
       }
+      if (e.velocity) e.object.position.addScaledVector(e.velocity, dt);
       if (e.object.material.transparent) e.object.material.opacity = e.life / e.total;
       return true;
     });

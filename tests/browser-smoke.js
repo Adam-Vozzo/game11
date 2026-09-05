@@ -21,6 +21,7 @@ try {
     errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(url, { waitUntil: 'networkidle' });
+  assert.doesNotMatch(await page.locator('body').innerText(), /elephant/i);
   await page.screenshot({ path: 'test-results/menu.png' });
   for (const map of MAPS) {
     await page.locator(`[data-map="${map.id}"]`).click();
@@ -41,16 +42,21 @@ try {
   await page.locator('#play').click();
   await page.waitForFunction(() => document.pointerLockElement !== null);
   await page.waitForFunction(() => document.querySelector('#round-banner')?.textContent === '');
-  // A click shorter than a frame must still consume a cartridge.
+  assert.equal(
+    await page.locator('.hud-brand, .hud-connection, .alive-label, .weapon-hud, .esc-hint').count(),
+    0,
+  );
+  // A click shorter than a frame must still consume the single charge.
   await page.mouse.down();
   await page.mouse.up();
+  await page.waitForFunction(() => document.querySelector('#ammo')?.textContent.startsWith('00'));
+  await page.screenshot({ path: 'test-results/rail-shot.png' });
   await page.waitForFunction(() => document.querySelector('#ammo')?.textContent.startsWith('01'));
   await page.screenshot({ path: 'test-results/gameplay.png' });
-  await page.keyboard.down('KeyR');
-  await page.waitForTimeout(80);
-  await page.keyboard.up('KeyR');
-  await page.waitForFunction(() => document.querySelector('#ammo')?.textContent.startsWith('02'));
   await page.evaluate(() => document.exitPointerLock());
+  assert.match(await page.locator('.pause-tip').innerText(), /automatically recharges/);
+  assert.match(await page.locator('.controls-grid').innerText(), /WASD/);
+  await page.screenshot({ path: 'test-results/pause.png' });
   await page.locator('#settings').click();
   await page.locator('#fov').evaluate((element) => {
     element.value = '95';
@@ -59,7 +65,7 @@ try {
   await page.locator('#done-settings').click();
   await page.locator('#quit').click();
   assert.equal(
-    await page.evaluate(() => JSON.parse(localStorage.getItem('elephant-settings')).fov),
+    await page.evaluate(() => JSON.parse(localStorage.getItem('rail-settings')).fov),
     95,
   );
   await page.locator('[data-mode="friend"]').click();
@@ -74,10 +80,10 @@ try {
   await friend.locator('#resume').waitFor();
   await page.locator('#resume').waitFor();
   await friend.locator('#resume').click();
-  await friend.waitForFunction(() =>
-    document.querySelector('#hud-connection')?.textContent.includes('ROOM'),
-  );
-  assert.ok((await friend.locator('#hud-connection').textContent()).includes(code));
+  await friend.locator('#ammo').waitFor();
+  await friend.evaluate(() => document.exitPointerLock());
+  await friend.locator('.pause-session').waitFor();
+  assert.ok((await friend.locator('.pause-session').textContent()).includes(code));
   await friend.close();
   await page.getByRole('heading', { name: 'The arena is quiet.' }).waitFor();
   await page.locator('#notice-back').click();

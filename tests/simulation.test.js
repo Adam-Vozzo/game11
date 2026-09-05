@@ -76,23 +76,27 @@ test('one hit awards exactly one point and respawns both players quickly', () =>
   for (let i = 0; i < 100; i++) stepMatch(m, [{}, {}], 1 / 60);
   assert.equal(m.round, 2);
   assert.equal(m.players[1].alive, true);
-  assert.equal(m.players[0].ammo, 2);
+  assert.equal(m.players[0].ammo, 1);
   assert.equal(m.players[0].score, 1);
 });
-test('cooldown, two-round capacity and reload are enforced', () => {
+test('single rail charge automatically reloads after firing without another input', () => {
   const m = live();
   m.players[0].yaw = Math.PI / 2;
-  shoot(m, 0);
   assert.equal(m.players[0].ammo, 1);
-  assert.equal(shoot(m, 0), false);
-  for (let i = 0; i < 31; i++) stepMatch(m, [{}, {}], 1 / 60);
-  shoot(m, 0);
+  assert.equal(shoot(m, 0), true);
   assert.equal(m.players[0].ammo, 0);
-  for (let i = 0; i < 31; i++) stepMatch(m, [{}, {}], 1 / 60);
+  assert.equal(m.players[0].reload, RULES.reload);
   assert.equal(shoot(m, 0), false);
-  assert.ok(m.players[0].reload > 0);
-  for (let i = 0; i < 83; i++) stepMatch(m, [{}, {}], 1 / 60);
-  assert.equal(m.players[0].ammo, 2);
+  for (let i = 0; i < 40; i++) stepMatch(m, [{}, {}], 1 / 60);
+  assert.equal(m.players[0].ammo, 0);
+  assert.equal(shoot(m, 0), false);
+  for (let i = 0; i < 30; i++) stepMatch(m, [{}, {}], 1 / 60);
+  assert.equal(m.players[0].ammo, 1);
+  assert.equal(m.players[0].reload, 0);
+  assert.equal(shoot(m, 0), true);
+  assert.equal(m.players[0].ammo, 0);
+  assert.equal(m.players[0].shots, 2);
+  assert.equal(m.events.filter((e) => e.type === 'reload').length, 2);
 });
 test('diagonal movement does not exceed straight speed', () => {
   const p = createMatch().players[0],

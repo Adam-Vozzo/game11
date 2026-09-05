@@ -8,7 +8,8 @@ export const RULES = {
   radius: 0.38,
   height: 1.7,
   stepHeight: 0.32,
-  reload: 1.35,
+  reload: 1.1,
+  capacity: 1,
   cooldown: 0.48,
   roundTime: 30,
   target: 7,
@@ -79,7 +80,7 @@ export function makePlayer(id) {
     pitch: 0,
     alive: true,
     ground: true,
-    ammo: 2,
+    ammo: RULES.capacity,
     reload: 0,
     cooldown: 0,
     score: 0,
@@ -184,7 +185,7 @@ function spawn(m) {
       z: s[2],
       vy: 0,
       alive: true,
-      ammo: 2,
+      ammo: RULES.capacity,
       reload: 0,
       cooldown: 0,
       ground: true,
@@ -238,6 +239,8 @@ export function shoot(m, id) {
     },
     hit: hit < wall,
   });
+  p.reload = RULES.reload;
+  emit(m, 'reload', { player: id });
   if (hit < wall) {
     other.alive = false;
     endRound(m, id);
@@ -270,9 +273,9 @@ export function stepMatch(m, inputs, dt) {
     p.cooldown = Math.max(0, p.cooldown - dt);
     if (p.reload > 0) {
       p.reload = Math.max(0, p.reload - dt);
-      if (p.reload === 0) p.ammo = 2;
+      if (p.reload === 0) p.ammo = RULES.capacity;
     }
-    if (input.reload && p.ammo < 2 && !p.reload) {
+    if ((input.reload || p.ammo === 0) && p.ammo < RULES.capacity && !p.reload) {
       p.reload = RULES.reload;
       emit(m, 'reload', { player: i });
     }

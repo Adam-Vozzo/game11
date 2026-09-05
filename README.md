@@ -1,6 +1,6 @@
-# Elephant Duel Club
+# Rail Duel Club
 
-A playable, fast-paced desktop FPS prototype. Two players, a double-barrel elephant rifle, compact arenas, and almost no downtime. Built for **Adam-Vozzo/game11**.
+A playable, fast-paced desktop FPS prototype. Two players, a single-shot railgun, compact arenas, and almost no downtime. Built for **Adam-Vozzo/game11**.
 
 ## Play
 
@@ -29,12 +29,12 @@ This repository does not automatically deploy or provision a paid service.
 
 ## Rules and controls
 
-- One hit kills. Two rounds in the rifle; 0.48-second shot cooldown and 1.35-second reload.
+- One hit kills. One charge in the railgun; automatic 1.1-second recharge after every shot.
 - First to seven round wins. Each round lasts at most 30 seconds; a timeout is a draw.
 - After a kill, a 1.6-second result beat and a 1-second countdown reset both players.
 - Spawn sides swap each round. Optional arena rotation cycles through all ten arenas.
 - AI has three difficulty settings and grid-based routing around cover.
-- Hold fire for successive shots. Empty fire starts a reload, or press R to reload early.
+- Hold fire for successive shots as each charge becomes ready. The HUD shows only score, timer, aim feedback, and ammo; controls and session details are in the Escape menu.
 
 | Action                | Control          |
 | --------------------- | ---------------- |
@@ -44,7 +44,7 @@ This repository does not automatically deploy or provision a paid service.
 | Aim                   | Mouse            |
 | Fire                  | Left mouse       |
 | Focus aim             | Hold right mouse |
-| Reload                | R                |
+| Recharge              | Automatic        |
 | Pause / release mouse | Escape           |
 
 Sensitivity, field of view, volume, and AI difficulty are saved in browser storage. Solo play pauses when the mouse is released or the window loses focus. **Online matches keep running while paused.** Both players must request a rematch after an online match finishes.
@@ -89,7 +89,7 @@ Code guide:
 - `src/arena-renderer.js`: procedural map scenery built from the collision layout.
 - `src/renderer.js`: opponent, viewmodel, lights, and shot effects.
 - `src/main.js`: menus, controls, local simulation, prediction, and networking.
-- `src/audio.js`: synthesized rifle and feedback sounds.
+- `src/audio.js`: synthesized railgun and feedback sounds.
 - `server.js`: authoritative matches, private rooms, static files, and input validation.
 
 The server simulates at 60 Hz and broadcasts at 20 Hz. The client predicts local movement and uses server snapshots for correction. The server controls hits, scores, ammunition, and player positions; clients send only movement/look/action inputs. Messages are size-limited and rate-limited, idle rooms expire, and disconnected opponents are notified.

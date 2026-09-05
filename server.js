@@ -223,6 +223,6 @@ export function createGameServer({
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const app = createGameServer();
   app.server.on('listening', () =>
-    console.log(`Elephant Duel Club: http://localhost:${app.server.address().port}`),
+    console.log(`Rail Duel Club: http://localhost:${app.server.address().port}`),
   );
 }

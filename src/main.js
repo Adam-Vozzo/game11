@@ -24,7 +24,7 @@ try {
 const audio = new Audio();
 const saved = (() => {
   try {
-    return JSON.parse(localStorage.getItem('elephant-settings') || '{}');
+    return JSON.parse(localStorage.getItem('rail-settings') || '{}');
   } catch {
     return {};
   }
@@ -165,7 +165,7 @@ function showLayoutNotes() {
   overlay.querySelector('#close-layout').onclick = () => overlay.remove();
 }
 function topbar() {
-  return '<header class="topbar"><a class="brand" href="/" aria-label="Elephant Duel Club home"><span class="brand-mark">E<span>•</span></span><span>ELEPHANT<br><small>DUEL CLUB</small></span></a><div class="build-tag"><i></i> PROTOTYPE 002 <span> / </span> DESKTOP FPS</div><button class="quiet" id="settings">SETTINGS <span>⚙</span></button></header>';
+  return '<header class="topbar"><a class="brand" href="/" aria-label="Rail Duel Club home"><span class="brand-mark">R<span>•</span></span><span>RAIL<br><small>DUEL CLUB</small></span></a><div class="build-tag"><i></i> PROTOTYPE 003 <span> / </span> DESKTOP FPS</div><button class="quiet" id="settings">SETTINGS <span>⚙</span></button></header>';
 }
 function wireSettings() {
   document.querySelector('#settings')?.addEventListener('click', showSettings);
@@ -179,7 +179,7 @@ function showMenu() {
   world.load(selected);
   app.className = 'menu';
   const m = getMap(selected);
-  app.innerHTML = `${topbar()}<main class="launch"><section class="intro"><div class="eyebrow"><span class="line"></span> TWO PLAYERS. NO SECOND CHANCES.</div><h1>BIG GUN.<br>SMALL <span>WORLD.</span></h1><p class="lead">A little arena. An elephant rifle.<br>Settle it in thirty seconds.</p><div class="rules"><span><b>01</b> SHOT TO KILL</span><span><b>02</b> IN THE CHAMBER</span><span><b>07</b> ROUNDS TO WIN</span></div><div class="play-panel"><div class="mode-toggle" role="group" aria-label="Opponent"><button data-mode="ai" class="${mode === 'ai' ? 'active' : ''}">SOLO VS AI</button><button data-mode="friend" class="${mode === 'friend' ? 'active' : ''}">1V1 WITH A FRIEND ${iconArrow}</button></div><div class="match-options"><label>${mode === 'ai' ? 'OPPONENT' : 'CONNECTION'}${mode === 'ai' ? `<select id="difficulty" aria-label="AI difficulty"><option value="easy">Easy / warm up</option><option value="normal">Normal / keep moving</option><option value="hard">Hard / good luck</option></select>` : '<span class="option-value">Private room · 2 players</span>'}</label><label class="rotation"><input type="checkbox" id="rotate" ${rotate ? 'checked' : ''}> ROTATE ARENAS</label></div><button class="primary" id="play">${mode === 'ai' ? 'ENTER THE ARENA' : 'PLAY WITH A FRIEND'} ${iconArrow}</button><div class="play-foot"><span class="dot"></span>${mode === 'ai' ? 'NO SIGN-UP. JUST ONE MORE ROUND.' : 'CREATE A ROOM. SEND A CODE. SETTLE IT.'}</div></div></section><aside class="scene-caption"><span class="coordinate">${String(MAPS.indexOf(m) + 1).padStart(2, '0')} / 10 &nbsp; • &nbsp; REFERENCE LAYOUT / HEIGHT STUDY</span><h2>${m.name}</h2><p>${m.description}</p><button class="quiet layout-notes" id="layout-notes">LAYOUT & REFERENCE ↗</button><div class="scene-tags"><span>${m.tag.split(' / ')[0]}</span><span>1V1</span><span>30 SEC</span></div></aside></main><section class="arena-library"><div class="library-heading"><h3>CHOOSE YOUR GROUND <span>10 ARENAS</span></h3><span>SMALL MAPS. BIG CONSEQUENCES.</span></div><div class="arena-list">${MAPS.map((a, i) => `<button class="arena-card ${a.id === selected ? 'selected' : ''}" data-map="${a.id}" aria-pressed="${a.id === selected}"><div class="map-top"><span>${String(i + 1).padStart(2, '0')}</span>${a.id === selected ? '<i></i>' : ''}</div>${miniMap(a)}<strong>${a.name}</strong><small>${a.tag.split(' / ')[0]}</small></button>`).join('')}</div></section><footer class="footer"><span>MOVE <kbd>W A S D</kbd> &nbsp; AIM <kbd>MOUSE</kbd> &nbsp; SHOOT <kbd>LMB</kbd> &nbsp; JUMP <kbd>SPACE</kbd></span><span>LESS WAITING. MORE DUELLING. <b>↗</b></span></footer>`;
+  app.innerHTML = `${topbar()}<main class="launch"><section class="intro"><div class="eyebrow"><span class="line"></span> TWO PLAYERS. NO SECOND CHANCES.</div><h1>BIG GUN.<br>SMALL <span>WORLD.</span></h1><p class="lead">A little arena. A single-shot railgun.<br>Settle it in thirty seconds.</p><div class="rules"><span><b>01</b> SHOT TO KILL</span><span><b>01</b> IN THE CHAMBER</span><span><b>07</b> ROUNDS TO WIN</span></div><div class="play-panel"><div class="mode-toggle" role="group" aria-label="Opponent"><button data-mode="ai" class="${mode === 'ai' ? 'active' : ''}">SOLO VS AI</button><button data-mode="friend" class="${mode === 'friend' ? 'active' : ''}">1V1 WITH A FRIEND ${iconArrow}</button></div><div class="match-options"><label>${mode === 'ai' ? 'OPPONENT' : 'CONNECTION'}${mode === 'ai' ? `<select id="difficulty" aria-label="AI difficulty"><option value="easy">Easy / warm up</option><option value="normal">Normal / keep moving</option><option value="hard">Hard / good luck</option></select>` : '<span class="option-value">Private room · 2 players</span>'}</label><label class="rotation"><input type="checkbox" id="rotate" ${rotate ? 'checked' : ''}> ROTATE ARENAS</label></div><button class="primary" id="play">${mode === 'ai' ? 'ENTER THE ARENA' : 'PLAY WITH A FRIEND'} ${iconArrow}</button><div class="play-foot"><span class="dot"></span>${mode === 'ai' ? 'NO SIGN-UP. JUST ONE MORE ROUND.' : 'CREATE A ROOM. SEND A CODE. SETTLE IT.'}</div></div></section><aside class="scene-caption"><span class="coordinate">${String(MAPS.indexOf(m) + 1).padStart(2, '0')} / 10 &nbsp; • &nbsp; REFERENCE LAYOUT / HEIGHT STUDY</span><h2>${m.name}</h2><p>${m.description}</p><button class="quiet layout-notes" id="layout-notes">LAYOUT & REFERENCE ↗</button><div class="scene-tags"><span>${m.tag.split(' / ')[0]}</span><span>1V1</span><span>30 SEC</span></div></aside></main><section class="arena-library"><div class="library-heading"><h3>CHOOSE YOUR GROUND <span>10 ARENAS</span></h3><span>SMALL MAPS. BIG CONSEQUENCES.</span></div><div class="arena-list">${MAPS.map((a, i) => `<button class="arena-card ${a.id === selected ? 'selected' : ''}" data-map="${a.id}" aria-pressed="${a.id === selected}"><div class="map-top"><span>${String(i + 1).padStart(2, '0')}</span>${a.id === selected ? '<i></i>' : ''}</div>${miniMap(a)}<strong>${a.name}</strong><small>${a.tag.split(' / ')[0]}</small></button>`).join('')}</div></section><footer class="footer"><span>MOVE <kbd>W A S D</kbd> &nbsp; AIM <kbd>MOUSE</kbd> &nbsp; SHOOT <kbd>LMB</kbd> &nbsp; JUMP <kbd>SPACE</kbd></span><span>LESS WAITING. MORE DUELLING. <b>↗</b></span></footer>`;
   document.querySelectorAll('[data-map]').forEach(
     (el) =>
       (el.onclick = () => {
@@ -209,7 +209,7 @@ function showMenu() {
 }
 function saveSettings() {
   try {
-    localStorage.setItem('elephant-settings', JSON.stringify(settings));
+    localStorage.setItem('rail-settings', JSON.stringify(settings));
   } catch {}
   audio.volume = settings.volume;
 }
@@ -218,7 +218,7 @@ function showSettings() {
   screen = 'settings';
   const overlay = document.createElement('div');
   overlay.className = 'modal-shade';
-  overlay.innerHTML = `<section class="modal"><div class="eyebrow">MAKE YOURSELF AT HOME</div><h2>Fine tuning.</h2><label class="slider-label">MOUSE SENSITIVITY <output id="sensitivity-value">${settings.sensitivity.toFixed(1)}</output><input id="sensitivity" type="range" min=".3" max="3" step=".1" value="${settings.sensitivity}"></label><label class="slider-label">FIELD OF VIEW <output id="fov-value">${settings.fov}°</output><input id="fov" type="range" min="65" max="110" step="1" value="${settings.fov}"></label><label class="slider-label">VOLUME <output id="volume-value">${Math.round(settings.volume * 100)}%</output><input id="volume" type="range" min="0" max="1" step=".05" value="${settings.volume}"></label><div class="controls-grid"><span>Move / Sprint</span><b>WASD / SHIFT</b><span>Jump / Reload</span><b>SPACE / R</b><span>Fire / Focus aim</span><b>LEFT / RIGHT MOUSE</b><span>Pause / Release mouse</span><b>ESC</b></div><button class="primary" id="done-settings">LOOKS GOOD ${iconArrow}</button></section>`;
+  overlay.innerHTML = `<section class="modal"><div class="eyebrow">MAKE YOURSELF AT HOME</div><h2>Fine tuning.</h2><label class="slider-label">MOUSE SENSITIVITY <output id="sensitivity-value">${settings.sensitivity.toFixed(1)}</output><input id="sensitivity" type="range" min=".3" max="3" step=".1" value="${settings.sensitivity}"></label><label class="slider-label">FIELD OF VIEW <output id="fov-value">${settings.fov}°</output><input id="fov" type="range" min="65" max="110" step="1" value="${settings.fov}"></label><label class="slider-label">VOLUME <output id="volume-value">${Math.round(settings.volume * 100)}%</output><input id="volume" type="range" min="0" max="1" step=".05" value="${settings.volume}"></label><div class="controls-grid"><span>Move / Sprint</span><b>WASD / SHIFT</b><span>Jump / Recharge</span><b>SPACE / AUTOMATIC</b><span>Fire / Focus aim</span><b>LEFT / RIGHT MOUSE</b><span>Pause / Release mouse</span><b>ESC</b></div><button class="primary" id="done-settings">LOOKS GOOD ${iconArrow}</button></section>`;
   app.append(overlay);
   for (const key of ['sensitivity', 'fov', 'volume'])
     document.querySelector('#' + key).oninput = (e) => {
@@ -390,7 +390,7 @@ function syncMatch() {
         } else damageUntil = performance.now() + 500;
       }
     }
-    if (ev.type === 'reload' && ev.player === localId) audio.reload();
+    if (ev.type === 'reload' && ev.player === localId) audio.reload(RULES.reload);
   }
   if (match.phase === 'finished' && screen === 'game') showResults();
 }
@@ -407,7 +407,7 @@ function startSolo() {
 }
 function renderHUD() {
   app.className = 'playing';
-  app.innerHTML = `<div class="hud"><div class="hud-top"><div class="hud-brand">E<span>•</span><small id="hud-map"></small></div><div class="scoreboard"><span class="score-you" id="score-you">0</span><div><small>FIRST TO 7</small><b id="round-clock">00:30</b></div><span class="score-enemy" id="score-enemy">0</span></div><div class="hud-connection" id="hud-connection"></div></div><div id="crosshair"><i></i><i></i><i></i><i></i></div><div id="hitmarker">×</div><div id="round-banner"></div><div class="hud-bottom"><div class="alive-label"><span class="dot"></span><b id="life-state">ONE SHOT. MAKE IT COUNT.</b><small>WASD MOVE &nbsp; SHIFT SPRINT &nbsp; SPACE JUMP</small></div><div class="weapon-hud"><small>.700 NITRO EXPRESS</small><b>ELEPHANT <span id="ammo">02 <em>/ 02</em></span></b><div id="reload-track"><i></i></div><small id="reload-label">R RELOAD &nbsp; · &nbsp; RMB FOCUS</small></div></div><div id="damage"></div><div class="esc-hint">ESC TO PAUSE</div></div>`;
+  app.innerHTML = `<div class="hud"><div class="hud-top"><div class="scoreboard"><span class="score-you" id="score-you">0</span><div><small>FIRST TO 7</small><b id="round-clock">00:30</b></div><span class="score-enemy" id="score-enemy">0</span></div></div><div id="crosshair"><i></i><i></i><i></i><i></i></div><div id="hitmarker">×</div><div id="round-banner"></div><div class="ammo-hud" id="ammo" aria-label="Ammo">01 <em>/ 01</em></div><div id="damage"></div></div>`;
 }
 function enterGame() {
   screen = 'game';
@@ -434,7 +434,10 @@ function showPause(
   input.forward = input.side = 0;
   document.exitPointerLock?.();
   app.className = 'playing';
-  app.innerHTML = `<div class="modal-shade"><section class="modal"><div class="eyebrow">ELEPHANT / DUEL CLUB</div><h2>${title}</h2><p class="muted">${sub}</p><button class="primary" id="resume">ENTER THE ARENA ${iconArrow}</button><button class="secondary" id="settings">SETTINGS</button><button class="quiet" id="quit">LEAVE MATCH</button></section></div>`;
+  const session = network
+    ? `ROOM ${roomCode} · ${latency} MS`
+    : `SOLO · ${settings.difficulty.toUpperCase()} AI`;
+  app.innerHTML = `<div class="modal-shade"><section class="modal pause-modal"><div class="eyebrow">RAIL / DUEL CLUB</div><h2>${title}</h2><p class="muted">${sub}</p><div class="pause-session">${getMap(match.mapId).name} <span>${session}</span></div><div class="controls-grid"><span>Move / Sprint</span><b>WASD / SHIFT</b><span>Jump</span><b>SPACE</b><span>Fire / Focus aim</span><b>LEFT / RIGHT MOUSE</b><span>Pause / Release mouse</span><b>ESC</b></div><p class="pause-tip">One shot. One kill. Your railgun automatically recharges in ${RULES.reload.toFixed(1)} seconds. Hold fire to shoot again when ready.</p><button class="primary" id="resume">ENTER THE ARENA ${iconArrow}</button><button class="secondary" id="settings">SETTINGS</button><button class="quiet" id="quit">LEAVE MATCH</button></section></div>`;
   document.querySelector('#resume').onclick = () => {
     if (match.phase === 'finished') showResults();
     else enterGame();
@@ -469,27 +472,18 @@ function showResults() {
 function updateHUD(now) {
   if (screen !== 'game' || !match) return;
   const p = match.players[localId];
-  document.querySelector('#hud-map').textContent = getMap(match.mapId).name.toUpperCase();
   document.querySelector('#score-you').textContent = p.score;
   document.querySelector('#score-enemy').textContent = match.players[1 - localId].score;
   document.querySelector('#round-clock').textContent =
     '00:' +
     String(Math.max(0, Math.ceil(match.phase === 'live' ? match.timer : 30))).padStart(2, '0');
-  document.querySelector('#hud-connection').textContent = network
-    ? `ROOM ${roomCode} · ${latency} MS`
-    : `SOLO · ${settings.difficulty.toUpperCase()} AI`;
-  document.querySelector('#ammo').innerHTML = `0${p.ammo} <em>/ 02</em>`;
-  document.querySelector('#reload-track i').style.width =
-    (p.reload > 0 ? (1 - p.reload / RULES.reload) * 100 : 100) + '%';
-  document.querySelector('#reload-label').textContent =
-    p.reload > 0
-      ? 'RELOADING…'
-      : p.ammo === 0
-        ? 'EMPTY · PRESS R TO RELOAD'
-        : 'R RELOAD · RMB FOCUS';
-  document.querySelector('#life-state').textContent = p.alive
-    ? 'ONE SHOT. MAKE IT COUNT.'
-    : 'YOU’LL BE RIGHT BACK.';
+  const ammo = document.querySelector('#ammo');
+  ammo.innerHTML = `0${p.ammo} <em>/ 01</em>`;
+  ammo.classList.toggle('charging', p.reload > 0);
+  ammo.setAttribute(
+    'aria-label',
+    p.reload > 0 ? 'Ammo 0 of 1. Recharging.' : `Ammo ${p.ammo} of 1`,
+  );
   document.querySelector('#hitmarker').style.opacity = now < hitUntil ? '1' : '0';
   document.querySelector('#damage').style.opacity = now < damageUntil ? '.65' : '0';
   document.querySelector('#crosshair').style.opacity =
